@@ -1,6 +1,21 @@
+
 import { AppFile, GithubRepo } from "../types.ts";
 
 const GITHUB_API_URL = "https://api.github.com";
+
+/**
+ * A robust function to encode a UTF-8 string to Base64, avoiding deprecated 'unescape'.
+ * This is necessary because btoa() on its own does not support Unicode characters.
+ * @param str The Unicode string to encode.
+ * @returns The Base64-encoded string.
+ */
+function encodeUnicodeToBase64(str: string): string {
+    return btoa(
+        encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (match, p1) =>
+            String.fromCharCode(parseInt(p1, 16))
+        )
+    );
+}
 
 export async function createGithubRepo(repoName: string, token: string): Promise<GithubRepo> {
   const response = await fetch(`${GITHUB_API_URL}/user/repos`, {
@@ -33,8 +48,7 @@ export async function uploadFilesToRepo(
   token: string
 ): Promise<void> {
   for (const file of files) {
-    // Correctly encode file content to Base64 for the GitHub API
-    const content = btoa(unescape(encodeURIComponent(file.content)));
+    const content = encodeUnicodeToBase64(file.content);
     const url = `${GITHUB_API_URL}/repos/${owner}/${repoName}/contents/${file.name}`;
     
     const response = await fetch(url, {

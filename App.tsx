@@ -28,11 +28,11 @@ const App: React.FC = () => {
   return (
     <div className="bg-gray-900 min-h-screen text-white font-sans">
         <Routes>
-            {/* Publicly hosted app view. Does not include the Header/Layout. */}
-            <Route path="/:owner/:repoName" element={<PublicAppHost />} />
-
-            {/* Internal app management UI */}
+            {/* Internal app management UI (must come first to be matched correctly) */}
             <Route path="/_/*" element={<InternalLayout />} />
+
+            {/* Publicly hosted app view. */}
+            <Route path="/:owner/:repoName" element={<PublicAppHost />} />
 
             {/* Redirect root to the dashboard */}
             <Route path="/" element={<Navigate to="/_/dashboard" replace />} />
