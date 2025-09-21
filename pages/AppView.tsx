@@ -26,17 +26,6 @@ const AppView: React.FC = () => {
   }, [appId, apps]);
 
   useEffect(() => {
-     if (appId) {
-        setApps(prevApps => 
-            prevApps.map(a => 
-                a.id === appId ? {...a, views: (a.views || 0) + 1} : a
-            )
-        );
-     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appId]);
-
-  useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
@@ -120,7 +109,7 @@ const AppView: React.FC = () => {
              <span className="w-3 h-3 bg-green-500 rounded-full"></span>
            </div>
            <div className="bg-gray-800 text-gray-300 text-sm rounded-md px-4 py-1 flex-grow mx-4 text-center truncate">
-              /AIcreator/{app.slug}
+              /{app.slug}
            </div>
         </div>
         <iframe
@@ -171,6 +160,7 @@ const AppView: React.FC = () => {
               <input
                 type="text"
                 value={userInput}
+                // FIX: Corrected typo `e.e.target.value` to `e.target.value`.
                 onChange={(e) => setUserInput(e.target.value)}
                 placeholder="e.g., 'Make the hero button green.'"
                 className="w-full bg-transparent p-3 text-white focus:outline-none"
