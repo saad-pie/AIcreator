@@ -33,6 +33,62 @@ const responseSchema = {
   required: ["files"],
 };
 
+const planResponseSchema = {
+    type: Type.OBJECT,
+    properties: {
+        name: {
+            type: Type.STRING,
+            description: "A short, catchy, kebab-case name for the website based on the prompt. This will be used as the GitHub repository name. E.g., 'cool-photo-portfolio'.",
+        },
+        description: {
+            type: Type.STRING,
+            description: "A detailed, user-facing description of the website concept in Markdown format. This will be shown to the user for editing and will be used for the README.md file and to generate the website.",
+        },
+    },
+    required: ["name", "description"],
+};
+
+export async function generateWebsitePlan(prompt: string): Promise<{name: string, description: string}> {
+    try {
+        const fullPrompt = `
+            Based on the user's website idea, generate a plan for the website.
+            The plan should include a short, catchy, kebab-case name suitable for a URL and repository name, and a user-facing description in Markdown format.
+
+            User Prompt: "${prompt}"
+
+            Return the result as a JSON object with 'name' and 'description' properties.
+        `;
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: fullPrompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: planResponseSchema,
+                temperature: 0.5,
+            },
+        });
+
+        const jsonText = response.text.trim();
+        const parsedResult = JSON.parse(jsonText);
+
+        if (parsedResult.name && parsedResult.description) {
+            return parsedResult;
+        } else {
+            console.error("Invalid JSON structure from Gemini API for plan:", parsedResult);
+            throw new Error("Failed to generate website plan: Invalid response structure.");
+        }
+    } catch (error) {
+        console.error("Error generating website plan with Gemini:", error);
+        if (error instanceof Error) {
+            if (error.message.includes("500") || error.message.toLowerCase().includes("network") || error.message.toLowerCase().includes("rpc failed")) {
+                throw new Error("Could not connect to the AI service. This might be a temporary issue. Please check your network connection and try again in a moment.");
+            }
+            throw new Error(`Failed to generate website plan: ${error.message}`);
+        }
+        throw new Error("An unknown error occurred while generating the website plan.");
+    }
+}
+
 
 export async function generateWebsite(prompt: string): Promise<AppFile[]> {
   try {
@@ -78,6 +134,9 @@ export async function generateWebsite(prompt: string): Promise<AppFile[]> {
   } catch (error) {
     console.error("Error generating website with Gemini:", error);
     if (error instanceof Error) {
+        if (error.message.includes("500") || error.message.toLowerCase().includes("network") || error.message.toLowerCase().includes("rpc failed")) {
+            throw new Error("Could not connect to the AI service while building the website. This might be a temporary issue. Please try again.");
+        }
         throw new Error(`Failed to generate website: ${error.message}`);
     }
     throw new Error("An unknown error occurred while generating the website.");
