@@ -1,5 +1,4 @@
 {
   "name": "Copy of AI Website Weaver",
-  "description": "An AI-powered platform where you can describe a website idea, and Gemini will generate a plan, build a functional preview, and help you iterate on the design through chat.",
-  "requestFramePermissions": []
+  "description": "An AI-powered platform where you can describe a website idea, and Gemini will generate a plan, build a functional preview, and help you iterate on the design through chat."
 }

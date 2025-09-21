@@ -1,128 +1,85 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
-import type { AppPlan, ChatMessage } from '../types';
+import { AppFile } from "../types.ts";
 
 if (!process.env.API_KEY) {
-  throw new Error("API_KEY environment variable not set");
+  throw new Error("API_KEY environment variable not set.");
 }
 
+// Fix: Initialize GoogleGenAI with a named apiKey parameter as per guidelines.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-const planSchema = {
+const responseSchema = {
   type: Type.OBJECT,
   properties: {
-    detailedDescription: {
-      type: Type.STRING,
-      description: "A detailed, engaging description of the website, expanded from the user's initial idea. This should be a few sentences long.",
-    },
-    colorPalette: {
-      type: Type.OBJECT,
-      properties: {
-        primary: { type: Type.STRING, description: "A hex color code for the primary site color (e.g., for backgrounds)." },
-        secondary: { type: Type.STRING, description: "A hex color code for the secondary site color (e.g., for cards/containers)." },
-        accent: { type: Type.STRING, description: "A hex color code for the accent color (e.g., for buttons, links)." },
-        neutral: { type: Type.STRING, description: "A hex color code for text and neutral elements." },
-      },
-    },
-    features: {
+    files: {
       type: Type.ARRAY,
+      description: "An array of files for the website, including index.html, style.css, and script.js.",
       items: {
-        type: Type.STRING,
+        type: Type.OBJECT,
+        properties: {
+          name: {
+            type: Type.STRING,
+            description: "The filename, e.g., index.html, style.css, or script.js.",
+          },
+          content: {
+            type: Type.STRING,
+            description: "The complete code content for the file.",
+          },
+        },
+        required: ["name", "content"],
       },
-      description: "A list of 3-5 key features the website should have.",
     },
   },
+  required: ["files"],
 };
 
 
-export const createAppPlan = async (appName: string, appDescription: string): Promise<AppPlan> => {
+export async function generateWebsite(prompt: string): Promise<AppFile[]> {
   try {
-    const prompt = `
-      You are a Product Manager and UI/UX Designer. A user wants to create a website with the following details:
-      App Name: "${appName}"
-      App Description: "${appDescription}"
+    const fullPrompt = `
+      Based on the user's prompt, create a complete, single-page website.
+      The website should be visually appealing, responsive, and functional.
+      Generate the necessary HTML, CSS, and JavaScript files.
+      - index.html: Should be a complete HTML5 document with a <head> and <body>. Link to style.css and script.js using relative paths if they are generated.
+      - style.css: Should contain all the CSS for styling the page. Use modern CSS practices like flexbox or grid.
+      - script.js: Should contain any JavaScript for interactivity. It can be empty if not needed.
 
-      Your task is to generate a structured plan for this website. Create a detailed description that fleshes out the user's idea, design a modern and aesthetically pleasing color palette, and list the key features.
-      Provide the output in a structured JSON format.
+      User Prompt: "${prompt}"
+
+      Return the result as a JSON object with a 'files' property, which is an array of file objects. Each file object must have 'name' and 'content' properties.
     `;
+
+    // Fix: Use ai.models.generateContent and provide the model name with each call.
     const response = await ai.models.generateContent({
+      // Fix: Use the 'gemini-2.5-flash' model for general text tasks.
       model: "gemini-2.5-flash",
-      contents: prompt,
+      contents: fullPrompt,
       config: {
         responseMimeType: "application/json",
-        responseSchema: planSchema,
+        responseSchema: responseSchema,
+        temperature: 0.7,
       },
     });
 
+    // Fix: Access the generated text directly via the .text property.
     const jsonText = response.text.trim();
-    return JSON.parse(jsonText);
+    const parsedResult = JSON.parse(jsonText);
+
+    if (parsedResult.files && Array.isArray(parsedResult.files)) {
+       if (!parsedResult.files.some((file: AppFile) => file.name === 'index.html')) {
+         throw new Error("Generated code does not contain index.html.");
+       }
+       return parsedResult.files;
+    } else {
+        console.error("Invalid JSON structure from Gemini API:", parsedResult);
+        throw new Error("Failed to generate website: Invalid response structure.");
+    }
+
   } catch (error) {
-    console.error("Error creating app plan:", error);
-    throw new Error("Failed to generate an app plan from the description.");
+    console.error("Error generating website with Gemini:", error);
+    if (error instanceof Error) {
+        throw new Error(`Failed to generate website: ${error.message}`);
+    }
+    throw new Error("An unknown error occurred while generating the website.");
   }
-};
-
-export const generateAppHtml = async (plan: AppPlan, appName: string): Promise<string> => {
-  const prompt = `
-    You are a senior frontend developer specializing in Tailwind CSS.
-    Generate a complete, single HTML file for a landing page for an app called "${appName}".
-    The app is described as: "${plan.detailedDescription}".
-    It should have the following features: ${plan.features.join(", ")}.
-    
-    You MUST use the following color palette:
-    - Primary: ${plan.colorPalette.primary}
-    - Secondary: ${plan.colorPalette.secondary}
-    - Accent: ${plan.colorPalette.accent}
-    - Text/Neutral: ${plan.colorPalette.neutral}
-
-    Instructions:
-    1.  Use Tailwind CSS for all styling. Do NOT use any inline style attributes or <style> tags.
-    2.  The HTML should be modern, visually appealing, and responsive.
-    3.  Include a hero section, a features section, and a simple footer.
-    4.  Create placeholder content that looks realistic.
-    5.  The final output should be ONLY the raw HTML code, starting with <!DOCTYPE html> and ending with </html>. Do not include any markdown formatting like \`\`\`html.
-  `;
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-    });
-    return response.text.trim();
-  } catch (error) {
-    console.error("Error generating app HTML:", error);
-    throw new Error("Failed to generate the website's HTML.");
-  }
-};
-
-export const chatForImprovements = async (plan: AppPlan, currentHtml: string, chatHistory: ChatMessage[]): Promise<string> => {
-  const historyText = chatHistory.map(msg => `${msg.sender}: ${msg.text}`).join('\n');
-
-  const prompt = `
-    You are an AI assistant helping a user improve their website.
-    
-    Original App Plan:
-    - Description: ${plan.detailedDescription}
-    - Features: ${plan.features.join(", ")}
-    - Colors: Primary-${plan.colorPalette.primary}, Secondary-${plan.colorPalette.secondary}, Accent-${plan.colorPalette.accent}
-
-    Chat History:
-    ${historyText}
-
-    The last message from the user is a request for an improvement. Based on the entire context (plan, history), provide a helpful response.
-    
-    If the user is asking for a visual change that can be implemented with HTML/Tailwind, generate the FULL, NEW HTML code for the website that incorporates the change. 
-    If you generate HTML, ONLY output the raw HTML code and nothing else.
-    
-    If the user is asking a question or for an idea, provide a concise text-based answer.
-  `;
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-    });
-    return response.text.trim();
-  } catch (error) {
-    console.error("Error in chat for improvements:", error);
-    throw new Error("Failed to get a response from the AI assistant.");
-  }
-};
+}

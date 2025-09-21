@@ -1,8 +1,10 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
-import App from './App';
-import { AppProvider } from './context/AppContext';
+// Fix: Added .tsx extension to fix module resolution error.
+import App from './App.tsx';
+// Fix: Added .tsx extension to fix module resolution error.
+import { AppProvider } from './context/AppContext.tsx';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

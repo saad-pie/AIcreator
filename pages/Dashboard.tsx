@@ -1,7 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useApps } from '../context/AppContext';
-import AppCard from '../components/AppCard';
+// Fix: Added .tsx file extension to fix module resolution error.
+import { useApps } from '../context/AppContext.tsx';
+// Fix: Added .tsx file extension to fix module resolution error.
+import AppCard from '../components/AppCard.tsx';
 
 const Dashboard: React.FC = () => {
   const { apps } = useApps();

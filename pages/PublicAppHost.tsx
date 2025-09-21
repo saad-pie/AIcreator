@@ -1,34 +1,66 @@
-import React, { useEffect } from 'react';
-import type { GeneratedApp } from '../types';
-import { useApps } from '../context/AppContext';
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import LoadingSpinner from '../components/LoadingSpinner.tsx';
 
-interface PublicAppHostProps {
-  app: GeneratedApp;
-}
-
-const PublicAppHost: React.FC<PublicAppHostProps> = ({ app }) => {
-  const { setApps } = useApps();
+const PublicAppHost: React.FC = () => {
+  const { owner, repoName } = useParams<{ owner: string, repoName: string }>();
+  const [htmlContent, setHtmlContent] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Use sessionStorage to count a view only once per browser session.
-    const viewedFlag = `viewed-${app.id}`;
-    if (!sessionStorage.getItem(viewedFlag)) {
-      setApps(prevApps =>
-        prevApps.map(a =>
-          a.id === app.id ? { ...a, views: (a.views || 0) + 1 } : a
-        )
-      );
-      sessionStorage.setItem(viewedFlag, 'true');
-    }
+    if (!owner || !repoName) return;
 
-    // Replace the entire document with the generated app's HTML.
-    document.documentElement.innerHTML = app.html;
-    document.title = app.name;
-    
-  }, [app, setApps]);
+    const fetchHtml = async () => {
+      try {
+        const url = `https://raw.githubusercontent.com/${owner}/${repoName}/main/index.html`;
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          throw new Error(`Could not fetch website content. Status: ${response.status}`);
+        }
 
-  // This component's primary job is the side-effect above. It doesn't render any visible React content.
-  return null;
+        let text = await response.text();
+
+        // Rewrite relative paths for CSS/JS to absolute paths to raw GitHub content
+        const baseUrl = `https://raw.githubusercontent.com/${owner}/${repoName}/main/`;
+        text = text.replace(/(href|src)="(?!https?:\/\/)([^"]+)"/g, `$1="${baseUrl}$2"`);
+
+        setHtmlContent(text);
+      } catch (err: any) {
+        setError(err.message || "Failed to load website.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchHtml();
+  }, [owner, repoName]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-900">
+        <LoadingSpinner message={`Loading ${repoName}...`} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-900 text-red-400">
+        <p>Error: {error}</p>
+      </div>
+    );
+  }
+
+  return (
+    <iframe
+      srcDoc={htmlContent || ''}
+      title={`${owner}/${repoName}`}
+      className="w-full h-screen border-0"
+      sandbox="allow-scripts allow-same-origin"
+    />
+  );
 };
 
 export default PublicAppHost;

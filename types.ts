@@ -1,27 +1,25 @@
-export interface AppPlan {
-  detailedDescription: string;
-  colorPalette: {
-    primary: string;
-    secondary: string;
-    accent: string;
-    neutral: string;
-  };
-  features: string[];
-}
-
-export interface ChatMessage {
-  sender: 'user' | 'ai';
-  text: string;
-  timestamp: string;
-}
-
-export interface GeneratedApp {
-  id: string;
+export interface AppFile {
   name: string;
-  slug: string;
-  plan: AppPlan;
-  html: string;
-  views: number;
-  chatHistory: ChatMessage[];
+  content: string;
+}
+
+export interface AppDetails {
+  id: string;
+  prompt: string;
+  files: AppFile[];
   createdAt: string;
+  githubRepoUrl?: string;
+  publicUrl?: string;
+}
+
+export interface UserSettings {
+  githubToken: string;
+}
+
+export interface GithubRepo {
+  name: string;
+  html_url: string;
+  owner: {
+    login: string;
+  };
 }
