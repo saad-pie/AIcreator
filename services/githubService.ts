@@ -71,3 +71,32 @@ export async function uploadFilesToRepo(
     }
   }
 }
+
+export async function enableGithubPages(
+  owner: string,
+  repoName: string,
+  token: string
+): Promise<{ html_url: string }> {
+  const url = `${GITHUB_API_URL}/repos/${owner}/${repoName}/pages`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `token ${token}`,
+      "Content-Type": "application/json",
+      Accept: "application/vnd.github.v3+json",
+    },
+    body: JSON.stringify({
+      source: {
+        branch: "main",
+        path: "/",
+      },
+    }),
+  });
+
+  if (response.status !== 201) { // 201 Created is the expected success status
+    const error = await response.json();
+    throw new Error(`Failed to enable GitHub Pages: ${error.message || response.statusText}`);
+  }
+
+  return response.json();
+}

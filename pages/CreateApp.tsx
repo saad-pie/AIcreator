@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApps } from '../context/AppContext.tsx';
 import { generateWebsite } from '../services/geminiService.ts';
-import { createGithubRepo, uploadFilesToRepo } from '../services/githubService.ts';
+import { createGithubRepo, uploadFilesToRepo, enableGithubPages } from '../services/githubService.ts';
 import { AppDetails } from '../types.ts';
 import LoadingSpinner from '../components/LoadingSpinner.tsx';
 
@@ -39,18 +39,23 @@ const CreateApp: React.FC = () => {
       setLoadingMessage("Deploying files to your new repository...");
       await uploadFilesToRepo(repo.owner.login, repo.name, files, settings.githubToken);
       
+      setLoadingMessage("Activating deployment via GitHub Pages...");
+      // Add a small delay to allow GitHub to process the new branch/files.
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      const pagesInfo = await enableGithubPages(repo.owner.login, repo.name, settings.githubToken);
+      
       const newApp: AppDetails = {
         id: repo.name,
         prompt,
         files,
         createdAt: new Date().toISOString(),
         githubRepoUrl: repo.html_url,
-        publicUrl: `/${repo.owner.login}/${repo.name}`,
+        publicUrl: pagesInfo.html_url,
       };
   
       addApp(newApp);
       setIsLoading(false);
-      navigate(`/_/app/${newApp.id}`);
+      navigate(`/_/app/${newApp.id}`, { state: { justCreated: true } });
   
     } catch (err: any) {
       setError(err.message || "An unknown error occurred.");
